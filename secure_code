@@ -1,0 +1,44 @@
+from flask import Flask, request, render_template_string
+import sqlite3
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'supersecretkey'
+
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    posts = conn.execute('SELECT * FROM posts').fetchall()
+    conn.close()
+    return render_template_string('''
+        <h1>Posts</h1>
+        {% for post in posts %}
+            <div>{{ post.title }}</div>
+            <div>{{ post.content }}</div>
+        {% endfor %}
+    ''', posts=posts)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    if username == 'admin' and password == 'secret':
+        return 'Logged in as admin'
+    else:
+        return 'Invalid credentials'
+
+@app.route('/submit', methods=['POST'])
+def submit():
+    content = request.form['content']
+    conn = get_db_connection()
+    conn.execute('INSERT INTO posts (content) VALUES (?)', (content,))
+    conn.commit()
+    conn.close()
+    return 'Post submitted'
+
+if __name__ == '__main__':
+    app.run(debug=True)
